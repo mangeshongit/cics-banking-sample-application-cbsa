@@ -27,24 +27,24 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: us-east-1
         role-session-name: github-actions-${{ github.run_id }}
 
     - name: Upload WAR to S3
       run: |
         set -e
-        aws s3 mb s3://cbsa-deployment-bucket --region ${{ secrets.AWS_REGION }} || true
-        aws s3 cp src/webui/target/*.war s3://cbsa-deployment-bucket/webui-v1.war
+        aws s3 mb s3://cbsa-deployment-bucket --region us-east-1 || true
+        aws s3 cp src/webui/target/*.war s3://cbsa-deployment-bucket/webui-v${{ github.run_number }}.war
 
     - name: Create EB application version
       run: |
         set -e
         aws elasticbeanstalk create-application-version \
           --application-name cbsa-webui \
-          --version-label v1 \
-          --source-bundle S3Bucket=cbsa-deployment-bucket,S3Key=webui-v1.war \
+          --version-label v${{ github.run_number }} \
+          --source-bundle S3Bucket=cbsa-deployment-bucket,S3Key=webui-v${{ github.run_number }}.war \
           --auto-create-application \
-          --region ${{ secrets.AWS_REGION }}
+          --region us-east-1
 
     - name: Update EB environment
       id: deploy
@@ -53,9 +53,8 @@ jobs:
         set -e
         aws elasticbeanstalk update-environment \
           --environment-name cbsa-webui-env \
-          --version-label v1 \
-          --region ${{ secrets.AWS_REGION }}
-
+          --version-label v${{ github.run_number }} \
+          --region us-east-1
     - name: Rollback on failure
       if: steps.deploy.outcome == 'failure'
       run: |
@@ -64,11 +63,11 @@ jobs:
           --environment-names cbsa-webui-env \
           --query "Environments[0].VersionLabel" \
           --output text \
-          --region ${{ secrets.AWS_REGION }})
+          --region us-east-1)
 
         echo "Previous version: $PREV_VERSION"
 
         aws elasticbeanstalk update-environment \
           --environment-name cbsa-webui-env \
           --version-label "$PREV_VERSION" \
-          --region ${{ secrets.AWS_REGION }}
+          --region us-east-1
