@@ -71,3 +71,4 @@ jobs:
           --environment-name cbsa-webui-env \
           --version-label "$PREV_VERSION" \
           --region us-east-1
+
